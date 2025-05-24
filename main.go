@@ -11,6 +11,7 @@ import (
 	"dnd-simulator/internal/handlers"
 	"dnd-simulator/internal/middleware"
 	"dnd-simulator/internal/services"
+	"dnd-simulator/internal/websocket"
 )
 
 func main() {
@@ -29,11 +30,17 @@ func main() {
 	userService := services.NewUserService(db)
 	campaignService := services.NewCampaignService(db)
 	characterService := services.NewCharacterService(db)
+	diceService := services.NewDiceService()
+
+	// Initialize WebSocket hub and start it
+	hub := websocket.NewHub()
+	go hub.Run()
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(userService, jwtService)
 	campaignHandler := handlers.NewCampaignHandler(campaignService)
 	characterHandler := handlers.NewCharacterHandler(characterService)
+	wsHandler := handlers.NewWebSocketHandler(hub, diceService)
 
 	// Setup router
 	r := gin.Default()
@@ -92,6 +99,20 @@ func main() {
 			dnd.GET("/races", characterHandler.GetRaces)                          // Get available races
 			dnd.GET("/classes", characterHandler.GetClasses)                      // Get available classes
 			dnd.GET("/backgrounds", characterHandler.GetBackgrounds)              // Get available backgrounds
+		}
+
+		// WebSocket and real-time routes
+		sessions := api.Group("/sessions", middleware.AuthMiddleware(jwtService))
+		{
+			// WebSocket connection endpoint
+			sessions.GET("/:id/ws", wsHandler.HandleWebSocket)                    // WebSocket connection
+			
+			// REST API for real-time features
+			sessions.POST("/:id/chat", wsHandler.SendChatMessage)                 // Send chat message
+			sessions.POST("/:id/dice", wsHandler.RollDice)                        // Roll custom dice
+			sessions.POST("/:id/dice/:dice", wsHandler.RollQuickDice)             // Quick dice roll (d20, d6, etc.)
+			sessions.POST("/:id/character-update", wsHandler.UpdateCharacter)     // Broadcast character update
+			sessions.GET("/:id/status", wsHandler.GetSessionStatus)               // Get session status
 		}
 	}
 
