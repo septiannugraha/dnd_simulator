@@ -28,10 +28,12 @@ func main() {
 	jwtService := auth.NewJWTService(cfg.JWTSecret)
 	userService := services.NewUserService(db)
 	campaignService := services.NewCampaignService(db)
+	characterService := services.NewCharacterService(db)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(userService, jwtService)
 	campaignHandler := handlers.NewCampaignHandler(campaignService)
+	characterHandler := handlers.NewCharacterHandler(characterService)
 
 	// Setup router
 	r := gin.Default()
@@ -71,6 +73,25 @@ func main() {
 			campaigns.DELETE("/:id", campaignHandler.DeleteCampaign)              // Delete campaign (DM only)
 			campaigns.POST("/:id/join", campaignHandler.JoinCampaign)             // Join campaign
 			campaigns.POST("/:id/leave", campaignHandler.LeaveCampaign)           // Leave campaign
+		}
+
+		// Character routes
+		characters := api.Group("/characters", middleware.AuthMiddleware(jwtService))
+		{
+			characters.POST("", characterHandler.CreateCharacter)                 // Create character
+			characters.GET("", characterHandler.GetCharacters)                    // List user's characters
+			characters.GET("/:id", characterHandler.GetCharacter)                 // Get character details
+			characters.PUT("/:id", characterHandler.UpdateCharacter)              // Update character
+			characters.DELETE("/:id", characterHandler.DeleteCharacter)           // Delete character
+			characters.POST("/:id/assign", characterHandler.AssignToCampaign)     // Assign to campaign
+		}
+
+		// D&D Data routes (for character creation)
+		dnd := api.Group("/dnd")
+		{
+			dnd.GET("/races", characterHandler.GetRaces)                          // Get available races
+			dnd.GET("/classes", characterHandler.GetClasses)                      // Get available classes
+			dnd.GET("/backgrounds", characterHandler.GetBackgrounds)              // Get available backgrounds
 		}
 	}
 

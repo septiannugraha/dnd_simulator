@@ -14,32 +14,6 @@ type User struct {
 	UpdatedAt time.Time          `bson:"updated_at" json:"updated_at"`
 }
 
-type Character struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	UserID       primitive.ObjectID `bson:"user_id" json:"user_id"`
-	CampaignID   primitive.ObjectID `bson:"campaign_id,omitempty" json:"campaign_id,omitempty"`
-	Name         string             `bson:"name" json:"name" binding:"required"`
-	Race         string             `bson:"race" json:"race" binding:"required"`
-	Class        string             `bson:"class" json:"class" binding:"required"`
-	Level        int                `bson:"level" json:"level"`
-	HitPoints    int                `bson:"hit_points" json:"hit_points"`
-	ArmorClass   int                `bson:"armor_class" json:"armor_class"`
-	Attributes   Attributes         `bson:"attributes" json:"attributes"`
-	Equipment    []string           `bson:"equipment" json:"equipment"`
-	Spells       []string           `bson:"spells" json:"spells"`
-	Background   string             `bson:"background" json:"background"`
-	CreatedAt    time.Time          `bson:"created_at" json:"created_at"`
-	UpdatedAt    time.Time          `bson:"updated_at" json:"updated_at"`
-}
-
-type Attributes struct {
-	Strength     int `bson:"strength" json:"strength"`
-	Dexterity    int `bson:"dexterity" json:"dexterity"`
-	Constitution int `bson:"constitution" json:"constitution"`
-	Intelligence int `bson:"intelligence" json:"intelligence"`
-	Wisdom       int `bson:"wisdom" json:"wisdom"`
-	Charisma     int `bson:"charisma" json:"charisma"`
-}
 
 type Campaign struct {
 	ID          primitive.ObjectID   `bson:"_id,omitempty" json:"id"`

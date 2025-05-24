@@ -1,0 +1,91 @@
+package data
+
+import "dnd-simulator/internal/models"
+
+// D&D 5e Race data
+var Races = map[string]models.Race{
+	"human": {
+		Name:            "Human",
+		Size:            "Medium",
+		Speed:           30,
+		AbilityIncrease: map[string]int{
+			"strength": 1, "dexterity": 1, "constitution": 1,
+			"intelligence": 1, "wisdom": 1, "charisma": 1,
+		},
+		Traits:        []string{"Extra Language", "Extra Skill"},
+		Languages:     []string{"Common"},
+		Proficiencies: []string{},
+	},
+	"elf": {
+		Name:            "Elf",
+		Size:            "Medium", 
+		Speed:           30,
+		AbilityIncrease: map[string]int{"dexterity": 2},
+		Traits:          []string{"Darkvision", "Keen Senses", "Fey Ancestry", "Trance"},
+		Languages:       []string{"Common", "Elvish"},
+		Proficiencies:   []string{"Perception"},
+	},
+	"dwarf": {
+		Name:            "Dwarf",
+		Size:            "Medium",
+		Speed:           25,
+		AbilityIncrease: map[string]int{"constitution": 2},
+		Traits:          []string{"Darkvision", "Dwarven Resilience", "Stonecunning"},
+		Languages:       []string{"Common", "Dwarvish"},
+		Proficiencies:   []string{"Battleaxe", "Handaxe", "Light hammer", "Warhammer"},
+	},
+	"halfling": {
+		Name:            "Halfling",
+		Size:            "Small",
+		Speed:           25,
+		AbilityIncrease: map[string]int{"dexterity": 2},
+		Traits:          []string{"Lucky", "Brave", "Halfling Nimbleness"},
+		Languages:       []string{"Common", "Halfling"},
+		Proficiencies:   []string{},
+	},
+	"dragonborn": {
+		Name:            "Dragonborn",
+		Size:            "Medium",
+		Speed:           30,
+		AbilityIncrease: map[string]int{"strength": 2, "charisma": 1},
+		Traits:          []string{"Draconic Ancestry", "Breath Weapon", "Damage Resistance"},
+		Languages:       []string{"Common", "Draconic"},
+		Proficiencies:   []string{},
+	},
+	"gnome": {
+		Name:            "Gnome",
+		Size:            "Small",
+		Speed:           25,
+		AbilityIncrease: map[string]int{"intelligence": 2},
+		Traits:          []string{"Darkvision", "Gnome Cunning"},
+		Languages:       []string{"Common", "Gnomish"},
+		Proficiencies:   []string{},
+	},
+	"half-elf": {
+		Name:            "Half-Elf",
+		Size:            "Medium",
+		Speed:           30,
+		AbilityIncrease: map[string]int{"charisma": 2},
+		Traits:          []string{"Darkvision", "Fey Ancestry", "Extra Skills"},
+		Languages:       []string{"Common", "Elvish"},
+		Proficiencies:   []string{},
+	},
+	"half-orc": {
+		Name:            "Half-Orc",
+		Size:            "Medium",
+		Speed:           30,
+		AbilityIncrease: map[string]int{"strength": 2, "constitution": 1},
+		Traits:          []string{"Darkvision", "Relentless Endurance", "Savage Attacks"},
+		Languages:       []string{"Common", "Orc"},
+		Proficiencies:   []string{},
+	},
+	"tiefling": {
+		Name:            "Tiefling",
+		Size:            "Medium",
+		Speed:           30,
+		AbilityIncrease: map[string]int{"intelligence": 1, "charisma": 2},
+		Traits:          []string{"Darkvision", "Hellish Resistance", "Infernal Legacy"},
+		Languages:       []string{"Common", "Infernal"},
+		Proficiencies:   []string{},
+	},
+}
