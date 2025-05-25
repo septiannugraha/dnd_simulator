@@ -31,6 +31,10 @@ const (
 	MessageTypeTurnOrder      = "turn_order"
 	MessageTypeTurnAdvance    = "turn_advance"
 	
+	// AI DM
+	MessageTypeAIResponse     = "ai_response"
+	MessageTypePlayerAction   = "player_action"
+	
 	// System messages
 	MessageTypeError          = "error"
 	MessageTypeSuccess        = "success"

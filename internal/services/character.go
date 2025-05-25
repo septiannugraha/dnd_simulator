@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"time"
 
@@ -86,8 +87,8 @@ func (s *CharacterService) CreateCharacter(userID primitive.ObjectID, req Create
 		Level:             level,
 		ExperiencePoints:  0,
 		Abilities:         finalAbilities,
-		HitPoints:         hitPoints,
-		MaxHitPoints:      hitPoints,
+		CurrentHP:         hitPoints,
+		MaxHP:             hitPoints,
 		ArmorClass:        armorClass,
 		Initiative:        initiative,
 		Speed:             race.Speed,
@@ -132,6 +133,25 @@ func (s *CharacterService) GetCharacterByID(characterID primitive.ObjectID) (*mo
 	}
 
 	return &character, nil
+}
+
+// GetCharactersByIDs retrieves multiple characters by their IDs
+func (s *CharacterService) GetCharactersByIDs(ctx context.Context, ids []primitive.ObjectID) ([]models.Character, error) {
+	collection := s.db.GetCollection("characters")
+	
+	filter := bson.M{"_id": bson.M{"$in": ids}}
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find characters: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var characters []models.Character
+	if err := cursor.All(ctx, &characters); err != nil {
+		return nil, fmt.Errorf("failed to decode characters: %w", err)
+	}
+
+	return characters, nil
 }
 
 func (s *CharacterService) GetUserCharacters(userID primitive.ObjectID) ([]models.Character, error) {

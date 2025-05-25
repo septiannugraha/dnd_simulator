@@ -33,23 +33,3 @@ type CampaignSettings struct {
 	AllowGuests  bool `bson:"allow_guests" json:"allow_guests"`
 }
 
-type GameSession struct {
-	ID           primitive.ObjectID   `bson:"_id,omitempty" json:"id"`
-	CampaignID   primitive.ObjectID   `bson:"campaign_id" json:"campaign_id"`
-	Name         string               `bson:"name" json:"name"`
-	Status       string               `bson:"status" json:"status"` // "waiting", "active", "paused", "ended"
-	CurrentTurn  int                  `bson:"current_turn" json:"current_turn"`
-	TurnOrder    []primitive.ObjectID `bson:"turn_order" json:"turn_order"`
-	PlayerIDs    []primitive.ObjectID `bson:"player_ids" json:"player_ids"`
-	CurrentScene string               `bson:"current_scene" json:"current_scene"`
-	SessionLog   []SessionEvent       `bson:"session_log" json:"session_log"`
-	CreatedAt    time.Time            `bson:"created_at" json:"created_at"`
-	UpdatedAt    time.Time            `bson:"updated_at" json:"updated_at"`
-}
-
-type SessionEvent struct {
-	Type      string    `bson:"type" json:"type"`
-	UserID    primitive.ObjectID `bson:"user_id" json:"user_id"`
-	Content   string    `bson:"content" json:"content"`
-	Timestamp time.Time `bson:"timestamp" json:"timestamp"`
-}

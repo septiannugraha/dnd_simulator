@@ -30,7 +30,10 @@ func main() {
 	userService := services.NewUserService(db)
 	campaignService := services.NewCampaignService(db)
 	characterService := services.NewCharacterService(db)
+	sessionService := services.NewSessionService(db)
 	diceService := services.NewDiceService()
+	aiService := services.NewAIService(cfg)
+	eventService := services.NewEventService(db)
 
 	// Initialize WebSocket hub and start it
 	hub := websocket.NewHub()
@@ -40,7 +43,9 @@ func main() {
 	authHandler := handlers.NewAuthHandler(userService, jwtService)
 	campaignHandler := handlers.NewCampaignHandler(campaignService)
 	characterHandler := handlers.NewCharacterHandler(characterService)
+	sessionHandler := handlers.NewSessionHandler(sessionService, campaignService)
 	wsHandler := handlers.NewWebSocketHandler(hub, diceService)
+	aiHandler := handlers.NewAIHandler(aiService, sessionService, characterService, campaignService, eventService)
 
 	// Setup router
 	r := gin.Default()
@@ -76,10 +81,11 @@ func main() {
 			campaigns.GET("", campaignHandler.GetCampaigns)                       // List user's campaigns
 			campaigns.GET("/public", campaignHandler.GetPublicCampaigns)          // List public campaigns
 			campaigns.GET("/:id", campaignHandler.GetCampaign)                    // Get campaign details
-			campaigns.PUT("/:id", campaignHandler.UpdateCampaign)                 // Update campaign (DM only)
-			campaigns.DELETE("/:id", campaignHandler.DeleteCampaign)              // Delete campaign (DM only)
+			campaigns.PUT("/:id", middleware.DMMiddleware(campaignService), campaignHandler.UpdateCampaign)                 // Update campaign (DM only)
+			campaigns.DELETE("/:id", middleware.DMMiddleware(campaignService), campaignHandler.DeleteCampaign)              // Delete campaign (DM only)
 			campaigns.POST("/:id/join", campaignHandler.JoinCampaign)             // Join campaign
 			campaigns.POST("/:id/leave", campaignHandler.LeaveCampaign)           // Leave campaign
+			campaigns.GET("/:id/sessions", sessionHandler.GetCampaignSessions)    // Get campaign sessions
 		}
 
 		// Character routes
@@ -101,9 +107,32 @@ func main() {
 			dnd.GET("/backgrounds", characterHandler.GetBackgrounds)              // Get available backgrounds
 		}
 
-		// WebSocket and real-time routes
+		// Game Session routes
 		sessions := api.Group("/sessions", middleware.AuthMiddleware(jwtService))
 		{
+			// Session management
+			sessions.POST("", sessionHandler.CreateSession)                       // Create session
+			sessions.GET("/:id", sessionHandler.GetSession)                       // Get session details
+			sessions.POST("/:id/join", sessionHandler.JoinSession)                // Join session
+			sessions.POST("/:id/leave", sessionHandler.LeaveSession)              // Leave session
+			sessions.POST("/:id/start", sessionHandler.StartSession)              // Start session (DM only)
+			
+			// Turn management
+			sessions.POST("/:id/initiative", sessionHandler.SetInitiative)        // Set initiative
+			sessions.POST("/:id/turn/advance", sessionHandler.AdvanceTurn)        // Advance turn (DM only)
+			sessions.PUT("/:id/scene", sessionHandler.UpdateScene)                // Update scene (DM only)
+			
+			// Session state management
+			sessions.POST("/:id/end", sessionHandler.EndSession)                  // End session (DM only)
+			sessions.POST("/:id/pause", sessionHandler.PauseSession)              // Pause session (DM only)
+			sessions.POST("/:id/resume", sessionHandler.ResumeSession)            // Resume session (DM only)
+			sessions.GET("/:id/status", sessionHandler.GetSessionStatus)          // Get session game state
+			
+			// AI DM features
+			sessions.POST("/:id/action", aiHandler.ProcessPlayerAction)           // Process player action with AI
+			sessions.GET("/:id/narrative", aiHandler.GetNarrativeHistory)        // Get narrative history
+			sessions.GET("/:id/events/:type", aiHandler.GetEventsByType)         // Get events by type
+			
 			// WebSocket connection endpoint
 			sessions.GET("/:id/ws", wsHandler.HandleWebSocket)                    // WebSocket connection
 			
@@ -112,7 +141,7 @@ func main() {
 			sessions.POST("/:id/dice", wsHandler.RollDice)                        // Roll custom dice
 			sessions.POST("/:id/dice/:dice", wsHandler.RollQuickDice)             // Quick dice roll (d20, d6, etc.)
 			sessions.POST("/:id/character-update", wsHandler.UpdateCharacter)     // Broadcast character update
-			sessions.GET("/:id/status", wsHandler.GetSessionStatus)               // Get session status
+			sessions.GET("/:id/ws/status", wsHandler.GetSessionStatus)            // Get WebSocket connection status
 		}
 	}
 

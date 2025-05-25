@@ -57,8 +57,8 @@ type Character struct {
 	Abilities         AbilityScores        `bson:"abilities" json:"abilities"`
 	
 	// Combat Stats
-	HitPoints         int                  `bson:"hit_points" json:"hit_points"`
-	MaxHitPoints      int                  `bson:"max_hit_points" json:"max_hit_points"`
+	CurrentHP         int                  `bson:"current_hp" json:"current_hp"`
+	MaxHP             int                  `bson:"max_hp" json:"max_hp"`
 	ArmorClass        int                  `bson:"armor_class" json:"armor_class"`
 	Initiative        int                  `bson:"initiative" json:"initiative"`
 	Speed             int                  `bson:"speed" json:"speed"`
@@ -139,4 +139,42 @@ type Spell struct {
 	Components  []string `bson:"components" json:"components"`
 	Duration    string   `bson:"duration" json:"duration"`
 	Description string   `bson:"description" json:"description"`
+}
+
+// AI-related models for DM functionality
+type GameEvent struct {
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	SessionID   primitive.ObjectID `bson:"session_id" json:"session_id"`
+	Type        string             `bson:"type" json:"type"`               // "action", "narrative", "combat", etc.
+	Description string             `bson:"description" json:"description"`
+	Timestamp   time.Time          `bson:"timestamp" json:"timestamp"`
+	ActorID     primitive.ObjectID `bson:"actor_id,omitempty" json:"actor_id,omitempty"`
+	Data        interface{}        `bson:"data,omitempty" json:"data,omitempty"`
+}
+
+type PlayerAction struct {
+	CharacterID   primitive.ObjectID `json:"character_id"`
+	CharacterName string             `json:"character_name"`
+	Action        string             `json:"action"`        // The action description
+	ActionType    string             `json:"action_type"`   // "combat", "roleplay", "exploration", etc.
+	Target        string             `json:"target,omitempty"`
+	DiceRoll      *DiceRoll          `json:"dice_roll,omitempty"`
+	Timestamp     time.Time          `json:"timestamp"`
+}
+
+type AIResponse struct {
+	ID            primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	SessionID     primitive.ObjectID `bson:"session_id" json:"session_id"`
+	Narrative     string             `bson:"narrative" json:"narrative"`
+	GameMechanics []GameMechanic     `bson:"game_mechanics,omitempty" json:"game_mechanics,omitempty"`
+	Timestamp     time.Time          `bson:"timestamp" json:"timestamp"`
+	TokensUsed    int                `bson:"tokens_used" json:"tokens_used"`
+}
+
+type GameMechanic struct {
+	Type        string                 `json:"type"`        // "dice_roll", "status_effect", "damage", etc.
+	Description string                 `json:"description"`
+	Target      string                 `json:"target,omitempty"`
+	Value       interface{}            `json:"value,omitempty"`
+	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 }
