@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -21,20 +22,18 @@ type AIService struct {
 	apiEndpoint  string
 	model        string
 	httpClient   *http.Client
-	maxTokens    int
 	temperature  float64
 }
 
 // NewAIService creates a new AI service instance
 func NewAIService(cfg *config.Config) *AIService {
 	return &AIService{
-		apiKey:      cfg.OpenAIKey, // Will be added to config
-		apiEndpoint: "https://api.openai.com/v1/chat/completions",
-		model:       "gpt-4-turbo-preview",
+		apiKey:      cfg.GeminiAPIKey,
+		apiEndpoint: "https://generativelanguage.googleapis.com/v1beta/models",
+		model:       "gemini-2.5-pro-preview-05-06",
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		maxTokens:   1000,
 		temperature: 0.8,
 	}
 }
@@ -52,27 +51,29 @@ type AIContext struct {
 
 // GenerateResponse generates an AI DM response based on the game context and player action
 func (s *AIService) GenerateResponse(ctx context.Context, aiContext *AIContext) (*models.AIResponse, error) {
-	// Build the system prompt with D&D rules and campaign context
-	systemPrompt := s.buildSystemPrompt(aiContext)
+	// Build the combined prompt
+	prompt := s.buildCombinedPrompt(aiContext)
 	
-	// Build the user prompt with the current action
-	userPrompt := s.buildUserPrompt(aiContext)
-	
-	// Prepare the API request
+	// Prepare the API request for Gemini
 	requestBody := map[string]interface{}{
-		"model": s.model,
-		"messages": []map[string]string{
+		"contents": []map[string]interface{}{
 			{
-				"role":    "system",
-				"content": systemPrompt,
-			},
-			{
-				"role":    "user",
-				"content": userPrompt,
+				"role": "user",
+				"parts": []map[string]interface{}{
+					{
+						"text": prompt,
+					},
+				},
 			},
 		},
-		"max_tokens":  s.maxTokens,
-		"temperature": s.temperature,
+		"generationConfig": map[string]interface{}{
+			"temperature": s.temperature,
+			"maxOutputTokens": 8192,
+			"responseMimeType": "text/plain",
+			"topK": 40,
+			"topP": 0.95,
+			"stopSequences": []string{"[END_SCENE]", "[AWAIT_PLAYER_ACTION]"},
+		},
 	}
 	
 	jsonBody, err := json.Marshal(requestBody)
@@ -80,14 +81,14 @@ func (s *AIService) GenerateResponse(ctx context.Context, aiContext *AIContext) 
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 	
-	// Create HTTP request
-	req, err := http.NewRequestWithContext(ctx, "POST", s.apiEndpoint, bytes.NewBuffer(jsonBody))
+	// Create HTTP request - using streamGenerateContent endpoint
+	url := fmt.Sprintf("%s/%s:streamGenerateContent?key=%s&alt=sse", s.apiEndpoint, s.model, s.apiKey)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 	
 	// Send request
 	resp, err := s.httpClient.Do(req)
@@ -97,21 +98,55 @@ func (s *AIService) GenerateResponse(ctx context.Context, aiContext *AIContext) 
 	defer resp.Body.Close()
 	
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API returned status code: %d", resp.StatusCode)
+		var errorBody map[string]interface{}
+		json.NewDecoder(resp.Body).Decode(&errorBody)
+		return nil, fmt.Errorf("API returned status code %d: %v", resp.StatusCode, errorBody)
 	}
 	
-	// Parse response
-	var apiResp OpenAIResponse
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	// Read the entire response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 	
-	if len(apiResp.Choices) == 0 {
-		return nil, errors.New("no response from AI")
+	// Parse SSE data
+	var fullText strings.Builder
+	var totalTokens int
+	
+	// Split by "data: " to get individual SSE messages
+	lines := strings.Split(string(body), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "data: ") {
+			jsonData := strings.TrimPrefix(line, "data: ")
+			jsonData = strings.TrimSpace(jsonData)
+			if jsonData == "" || jsonData == "[DONE]" {
+				continue
+			}
+			
+			var chunk GeminiStreamResponse
+			if err := json.Unmarshal([]byte(jsonData), &chunk); err != nil {
+				continue
+			}
+			
+			// Extract text from candidates
+			if len(chunk.Candidates) > 0 && len(chunk.Candidates[0].Content.Parts) > 0 {
+				text := chunk.Candidates[0].Content.Parts[0].Text
+				fullText.WriteString(text)
+			}
+			
+			// Update token count
+			if chunk.UsageMetadata.TotalTokenCount > 0 {
+				totalTokens = chunk.UsageMetadata.TotalTokenCount
+			}
+		}
 	}
 	
-	// Extract narrative and any game mechanics
-	narrative := apiResp.Choices[0].Message.Content
+	narrative := strings.TrimSpace(fullText.String())
+	if narrative == "" {
+		return nil, errors.New("empty response from AI")
+	}
+	
+	// Extract game mechanics from the narrative
 	mechanics := s.extractGameMechanics(narrative)
 	
 	return &models.AIResponse{
@@ -119,14 +154,15 @@ func (s *AIService) GenerateResponse(ctx context.Context, aiContext *AIContext) 
 		Narrative:     narrative,
 		GameMechanics: mechanics,
 		Timestamp:     time.Now(),
-		TokensUsed:    apiResp.Usage.TotalTokens,
+		TokensUsed:    totalTokens,
 	}, nil
 }
 
-// buildSystemPrompt creates the system prompt with D&D rules and campaign context
-func (s *AIService) buildSystemPrompt(ctx *AIContext) string {
+// buildCombinedPrompt creates a single prompt with all context for Gemini
+func (s *AIService) buildCombinedPrompt(ctx *AIContext) string {
 	var sb strings.Builder
 	
+	// System context
 	sb.WriteString("You are an expert Dungeon Master for a D&D 5e campaign. ")
 	sb.WriteString("Your responses should be immersive, descriptive, and follow D&D 5e rules.\n\n")
 	
@@ -163,12 +199,8 @@ func (s *AIService) buildSystemPrompt(ctx *AIContext) string {
 	sb.WriteString("4. Maintain campaign continuity and character consistency\n")
 	sb.WriteString("5. Create engaging narratives that give players meaningful choices\n")
 	
-	return sb.String()
-}
-
-// buildUserPrompt creates the user prompt with the current player action
-func (s *AIService) buildUserPrompt(ctx *AIContext) string {
-	var sb strings.Builder
+	// Current action
+	sb.WriteString("\n--- CURRENT ACTION ---\n")
 	
 	// Current turn information
 	if len(ctx.TurnOrder) > 0 && ctx.CurrentTurn < len(ctx.TurnOrder) {
@@ -199,13 +231,43 @@ func (s *AIService) extractGameMechanics(narrative string) []models.GameMechanic
 	var mechanics []models.GameMechanic
 	
 	// Look for common patterns like "roll a DC 15 Perception check"
-	// This is a simplified version - could be enhanced with regex
-	if strings.Contains(strings.ToLower(narrative), "roll") {
-		// Extract roll requirements
+	lowerNarrative := strings.ToLower(narrative)
+	
+	// Check for dice roll requirements
+	if strings.Contains(lowerNarrative, "roll") || strings.Contains(lowerNarrative, "make a") {
+		// Look for DC mentions
+		if strings.Contains(lowerNarrative, "dc") {
+			mechanic := models.GameMechanic{
+				Type:        "dice_roll",
+				Description: "Skill check required",
+			}
+			mechanics = append(mechanics, mechanic)
+		}
+		
+		// Look for attack rolls
+		if strings.Contains(lowerNarrative, "attack") || strings.Contains(lowerNarrative, "hit") {
+			mechanic := models.GameMechanic{
+				Type:        "attack_roll",
+				Description: "Attack roll required",
+			}
+			mechanics = append(mechanics, mechanic)
+		}
+		
+		// Look for saving throws
+		if strings.Contains(lowerNarrative, "saving throw") || strings.Contains(lowerNarrative, "save") {
+			mechanic := models.GameMechanic{
+				Type:        "saving_throw",
+				Description: "Saving throw required",
+			}
+			mechanics = append(mechanics, mechanic)
+		}
+	}
+	
+	// Check for damage mentions
+	if strings.Contains(lowerNarrative, "damage") || strings.Contains(lowerNarrative, "takes") {
 		mechanic := models.GameMechanic{
-			Type:        "dice_roll",
-			Description: "Roll required",
-			// Would parse DC, skill type, etc. from narrative
+			Type:        "damage",
+			Description: "Damage calculation needed",
 		}
 		mechanics = append(mechanics, mechanic)
 	}
@@ -213,14 +275,21 @@ func (s *AIService) extractGameMechanics(narrative string) []models.GameMechanic
 	return mechanics
 }
 
-// OpenAI API response structures
-type OpenAIResponse struct {
-	Choices []struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
-	} `json:"choices"`
-	Usage struct {
-		TotalTokens int `json:"total_tokens"`
-	} `json:"usage"`
+// GeminiStreamResponse represents a single chunk in the streaming response
+type GeminiStreamResponse struct {
+	Candidates []struct {
+		Content struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+			Role string `json:"role"`
+		} `json:"content"`
+		FinishReason string `json:"finishReason,omitempty"`
+		Index        int    `json:"index"`
+	} `json:"candidates"`
+	UsageMetadata struct {
+		PromptTokenCount int `json:"promptTokenCount"`
+		CandidatesTokenCount int `json:"candidatesTokenCount"`
+		TotalTokenCount int `json:"totalTokenCount"`
+	} `json:"usageMetadata"`
 }

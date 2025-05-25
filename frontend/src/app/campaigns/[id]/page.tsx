@@ -58,7 +58,7 @@ export default function CampaignDetailPage() {
 
   const campaignId = params.id as string;
   const isDM = user?.id === campaign?.dm_id;
-  const isPlayer = campaign?.players.some((p) => p.user_id === user?.id);
+  const isPlayer = campaign?.players?.some((p) => p.user_id === user?.id) || false;
 
   useEffect(() => {
     if (!user) {
@@ -75,8 +75,16 @@ export default function CampaignDetailPage() {
         campaignApi.get(campaignId),
         campaignApi.getSessions(campaignId),
       ]);
-      setCampaign(campaignRes.data.campaign);
-      setSessions(sessionsRes.data.sessions || []);
+      setCampaign(campaignRes.data);
+      // Handle different possible response structures for sessions
+      const sessionsData = sessionsRes.data;
+      if (Array.isArray(sessionsData)) {
+        setSessions(sessionsData);
+      } else if (sessionsData?.sessions && Array.isArray(sessionsData.sessions)) {
+        setSessions(sessionsData.sessions);
+      } else {
+        setSessions([]);
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to load campaign');
     } finally {
@@ -177,7 +185,7 @@ export default function CampaignDetailPage() {
                 <div className="flex items-center gap-2 text-sm text-gray-400">
                   <Users className="h-4 w-4" />
                   <span>
-                    {campaign.players.length} / {campaign.max_players} players
+                    {campaign.players?.length || 0} / {campaign.max_players} players
                   </span>
                 </div>
               </div>
@@ -204,7 +212,7 @@ export default function CampaignDetailPage() {
                 )}
               </div>
 
-              {sessions.length === 0 ? (
+              {!Array.isArray(sessions) || sessions.length === 0 ? (
                 <p className="text-gray-400 text-center py-8">No sessions yet</p>
               ) : (
                 <div className="space-y-4">
@@ -243,11 +251,11 @@ export default function CampaignDetailPage() {
 
             <div className="bg-gray-800 rounded-lg p-6">
               <h2 className="text-xl font-semibold text-white mb-4">Players</h2>
-              {campaign.players.length === 0 ? (
+              {(campaign.players?.length || 0) === 0 ? (
                 <p className="text-gray-400">No players yet</p>
               ) : (
                 <div className="space-y-3">
-                  {campaign.players.map((player) => (
+                  {campaign.players?.map((player) => (
                     <div key={player.user_id} className="flex justify-between items-center">
                       <div>
                         <p className="text-gray-300">{player.username}</p>

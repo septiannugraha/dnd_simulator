@@ -9,7 +9,7 @@ type Config struct {
 	MongoURI    string
 	DatabaseName string
 	JWTSecret   string
-	OpenAIKey   string
+	GeminiAPIKey string
 }
 
 func Load() *Config {
@@ -18,7 +18,7 @@ func Load() *Config {
 		MongoURI:    getEnv("MONGO_URI", "mongodb://localhost:27017"),
 		DatabaseName: getEnv("DATABASE_NAME", "dnd_simulator"),
 		JWTSecret:   getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
-		OpenAIKey:   getEnv("OPENAI_API_KEY", ""),
+		GeminiAPIKey: getEnv("GEMINI_API_KEY", ""),
 	}
 }
 

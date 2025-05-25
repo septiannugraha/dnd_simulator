@@ -17,6 +17,34 @@ interface AuthState {
   checkAuth: () => Promise<void>;
 }
 
+// Safe localStorage helper
+const safeLocalStorage = {
+  getItem: (key: string) => {
+    if (typeof window === 'undefined') return null;
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (key: string, value: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // Ignore localStorage errors
+    }
+  },
+  removeItem: (key: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Ignore localStorage errors
+    }
+  },
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: null,
@@ -26,8 +54,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     const response = await authApi.login({ username, password });
     const { token, user } = response.data;
     
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
+    safeLocalStorage.setItem('token', token);
+    safeLocalStorage.setItem('user', JSON.stringify(user));
     
     set({ user, token, isLoading: false });
   },
@@ -36,21 +64,21 @@ export const useAuthStore = create<AuthState>((set) => ({
     const response = await authApi.register({ username, email, password });
     const { token, user } = response.data;
     
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
+    safeLocalStorage.setItem('token', token);
+    safeLocalStorage.setItem('user', JSON.stringify(user));
     
     set({ user, token, isLoading: false });
   },
 
   logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    safeLocalStorage.removeItem('token');
+    safeLocalStorage.removeItem('user');
     set({ user: null, token: null });
   },
 
   checkAuth: async () => {
-    const token = localStorage.getItem('token');
-    const userStr = localStorage.getItem('user');
+    const token = safeLocalStorage.getItem('token');
+    const userStr = safeLocalStorage.getItem('user');
     
     if (!token || !userStr) {
       set({ isLoading: false });
@@ -65,8 +93,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       await authApi.me();
     } catch (error) {
       // Token is invalid
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      safeLocalStorage.removeItem('token');
+      safeLocalStorage.removeItem('user');
       set({ user: null, token: null, isLoading: false });
     }
   },

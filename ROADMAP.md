@@ -153,11 +153,11 @@ PUT  /api/sessions/:id/turn          // Advance turn order
 **Goal**: AI-powered Dungeon Master responses
 
 ### AI System Core
-- [ ] OpenAI/Claude API integration
-- [ ] Campaign context injection for AI prompts
-- [ ] Player action interpretation
-- [ ] Dynamic narrative generation
-- [ ] Basic rules compliance checking
+- [x] ~~OpenAI/Claude API integration~~ Google Gemini API integration
+- [x] Campaign context injection for AI prompts
+- [x] Player action interpretation
+- [x] Dynamic narrative generation
+- [x] Basic rules compliance checking
 
 ### AI Context Building
 ```go
@@ -171,16 +171,23 @@ type AIContext struct {
 ```
 
 ### Frontend Integration
-- [ ] Action input interface (text-based initially)
-- [ ] AI response display with formatting
-- [ ] Narrative history/log
+- [x] Action input interface (text-based initially)
+- [x] AI response display with formatting
+- [x] Narrative history/log
 
 ### Success Criteria
-- [ ] AI generates contextually appropriate responses
-- [ ] AI maintains campaign continuity
-- [ ] AI applies basic D&D rules correctly
-- [ ] Response time under 10 seconds
-- [ ] AI references character stats and campaign lore
+- [x] AI generates contextually appropriate responses
+- [x] AI maintains campaign continuity
+- [x] AI applies basic D&D rules correctly
+- [x] Response time under 10 seconds
+- [x] AI references character stats and campaign lore
+
+### Enhanced Features Added
+- [x] Google Gemini 2.5 Pro integration with streaming
+- [x] Enhanced generation parameters (8192 tokens, topK=40, topP=0.95)
+- [x] Game mechanics extraction from AI responses
+- [x] Support for dice rolls in player actions
+- [x] Context-aware responses using campaign and character data
 
 ---
 
@@ -197,17 +204,17 @@ type AIContext struct {
 
 ### Core Pages
 - [x] Authentication (Login/Register)
-- [ ] Dashboard
-- [ ] Campaign Management
-- [ ] Character Creation/Management
-- [ ] Game Session Interface
-- [ ] Real-time Chat
+- [x] Dashboard
+- [x] Campaign Management
+- [x] Character Creation/Management
+- [x] Game Session Interface
+- [x] Real-time Chat
 
 ### Success Criteria
-- [ ] All API endpoints integrated
-- [ ] Real-time features working smoothly
-- [ ] Responsive design on all devices
-- [ ] Error handling and loading states
+- [x] All API endpoints integrated
+- [x] Real-time features working smoothly
+- [x] Responsive design on all devices
+- [x] Error handling and loading states
 
 ---
 
@@ -233,12 +240,12 @@ type AIContext struct {
 ## MVP Success Criteria
 
 ### Core Functionality ✅
-- [ ] **Campaign Management**: DMs can create campaigns, set world context, invite players
-- [ ] **Character Creation**: Players create D&D 5e characters with auto-calculated stats
-- [ ] **Multiplayer Sessions**: Multiple players join real-time game sessions
-- [ ] **AI Dungeon Master**: AI responds to player actions with campaign-appropriate narrative
-- [ ] **Real-time Communication**: Text chat, dice rolling, character updates sync live
-- [ ] **Turn Management**: Structured turn order for organized gameplay
+- [x] **Campaign Management**: DMs can create campaigns, set world context, invite players
+- [x] **Character Creation**: Players create D&D 5e characters with auto-calculated stats
+- [x] **Multiplayer Sessions**: Multiple players join real-time game sessions
+- [x] **AI Dungeon Master**: AI responds to player actions with campaign-appropriate narrative
+- [x] **Real-time Communication**: Text chat, dice rolling, character updates sync live
+- [x] **Turn Management**: Structured turn order for organized gameplay
 
 ### Technical Requirements ✅
 - [ ] **Performance**: Supports 6+ concurrent players per session

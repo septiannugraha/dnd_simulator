@@ -133,9 +133,6 @@ func main() {
 			sessions.GET("/:id/narrative", aiHandler.GetNarrativeHistory)        // Get narrative history
 			sessions.GET("/:id/events/:type", aiHandler.GetEventsByType)         // Get events by type
 			
-			// WebSocket connection endpoint
-			sessions.GET("/:id/ws", wsHandler.HandleWebSocket)                    // WebSocket connection
-			
 			// REST API for real-time features
 			sessions.POST("/:id/chat", wsHandler.SendChatMessage)                 // Send chat message
 			sessions.POST("/:id/dice", wsHandler.RollDice)                        // Roll custom dice
@@ -143,6 +140,9 @@ func main() {
 			sessions.POST("/:id/character-update", wsHandler.UpdateCharacter)     // Broadcast character update
 			sessions.GET("/:id/ws/status", wsHandler.GetSessionStatus)            // Get WebSocket connection status
 		}
+		
+		// WebSocket endpoint with custom auth (outside the auth group)
+		api.GET("/sessions/:id/ws", middleware.WebSocketAuthMiddleware(jwtService), wsHandler.HandleWebSocket)
 	}
 
 	log.Printf("Starting D&D Simulator server on :%s", cfg.Port)
